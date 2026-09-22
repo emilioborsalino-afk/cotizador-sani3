@@ -408,8 +408,14 @@
           <input type="number" id="cfgPrecioBano" value="500000" step="1000">
         </div>
         <div class="field">
-          <label for="cfgVidaUtilBano">Vida útil del baño (años)</label>
+          <label for="cfgVidaUtilBano">Vida útil (años, aplica a ambos)</label>
           <input type="number" id="cfgVidaUtilBano" value="10" step="1">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label for="cfgPrecioCasillaVip">Precio de compra de una casilla VIP ($)</label>
+          <input type="number" id="cfgPrecioCasillaVip" value="10000000" step="10000">
         </div>
       </div>
       <div class="field-row">
@@ -687,8 +693,8 @@ function setDesagotesEvento(n){
   calcular();
 }
 
-const cfgIds = ['cfgGasoil','cfgConsumo','cfgConsumoVip','cfgDesgaste','cfgVelocidad','cfgEmpleados','cfgMinDesagote','cfgMinAcomodo1','cfgMinAcomodo10','cfgDisgregante','cfgPapel','cfgMonotributos','cfgSeguros','cfgImpuestos','cfgGalpon','cfgPrecioBano','cfgVidaUtilBano','cfgBanosEstimados'];
-const defaults = {cfgGasoil:2540, cfgConsumo:10.5, cfgConsumoVip:11.11, cfgDesgaste:50, cfgVelocidad:50, cfgEmpleados:2500000, cfgMinDesagote:15, cfgMinAcomodo1:15, cfgMinAcomodo10:40, cfgDisgregante:495, cfgPapel:270.83, cfgMonotributos:523000, cfgSeguros:200000, cfgImpuestos:50000, cfgGalpon:115000, cfgPrecioBano:500000, cfgVidaUtilBano:10, cfgBanosEstimados:140};
+const cfgIds = ['cfgGasoil','cfgConsumo','cfgConsumoVip','cfgDesgaste','cfgVelocidad','cfgEmpleados','cfgMinDesagote','cfgMinAcomodo1','cfgMinAcomodo10','cfgDisgregante','cfgPapel','cfgMonotributos','cfgSeguros','cfgImpuestos','cfgGalpon','cfgPrecioBano','cfgVidaUtilBano','cfgPrecioCasillaVip','cfgBanosEstimados'];
+const defaults = {cfgGasoil:2540, cfgConsumo:10.5, cfgConsumoVip:11.11, cfgDesgaste:50, cfgVelocidad:50, cfgEmpleados:2500000, cfgMinDesagote:15, cfgMinAcomodo1:15, cfgMinAcomodo10:40, cfgDisgregante:495, cfgPapel:270.83, cfgMonotributos:523000, cfgSeguros:200000, cfgImpuestos:50000, cfgGalpon:115000, cfgPrecioBano:500000, cfgVidaUtilBano:10, cfgPrecioCasillaVip:10000000, cfgBanosEstimados:140};
 
 function loadSaved(){
   try{
@@ -815,14 +821,15 @@ function cfg(){
     galpon: g('cfgGalpon'),
     precioBano: g('cfgPrecioBano'),
     vidaUtilBano: g('cfgVidaUtilBano') || 10,
+    precioCasillaVip: g('cfgPrecioCasillaVip'),
     banosEstimados: g('cfgBanosEstimados') || 1,
   };
 }
 
-function costoFijoPorBanoMes(c){
+function costoFijoPorBanoMes(c, precioActivo){
   const fijosMensuales = c.monotributos + c.seguros + c.impuestos + c.galpon;
   const overheadPorBano = fijosMensuales / Math.max(1, c.banosEstimados);
-  const amortizacionPorBano = c.precioBano / (Math.max(1, c.vidaUtilBano) * 12);
+  const amortizacionPorBano = (precioActivo!==undefined ? precioActivo : c.precioBano) / (Math.max(1, c.vidaUtilBano) * 12);
   return overheadPorBano + amortizacionPorBano;
 }
 
@@ -885,6 +892,7 @@ function calcular(){
   const contarManoObraViaje = document.getElementById('contarManoObraViaje').checked;
   const contarCostosFijos = document.getElementById('contarCostosFijos').checked;
   const fijoPorBanoMes = costoFijoPorBanoMes(c);
+  const fijoPorCasillaMes = costoFijoPorBanoMes(c, c.precioCasillaVip);
 
   let html = '';
   let totalPorBano = 0;
@@ -1095,7 +1103,7 @@ function calcular(){
     const gastoManoObraServicioVip = contarManoObraLugar ? (laborBombeoVip + laborEntregaYRetiroVip) : 0;
     const costoInsumosTotalVip = gastoDisgreganteVip + gastoPapelVip + gastoManoObraServicioVip + gastoEmpleadoExtraVip;
 
-    const gastoCostosFijos = contarCostosFijos ? (fijoPorBanoMes * cantidad * (semanasServicioVip/4.345)) : 0;
+    const gastoCostosFijos = contarCostosFijos ? (fijoPorCasillaMes * cantidad * (semanasServicioVip/4.345)) : 0;
     const totalGeneral = costoViajesTotalVip + costoInsumosTotalVip + recargoDom + gastoCostosFijos;
 
     html += `<div class="result">
@@ -1171,7 +1179,7 @@ function calcular(){
     const costoInsumosTotalVipEv = gastoDisgreganteVipEv + gastoPapelVipEv + gastoManoObraServicioVipEv + gastoEmpleadoExtraVip;
 
     const diasEventoVip = 1 + desagotesEventoVip; // aproximación: 1 día base + 1 día por cada desagote extra
-    const gastoCostosFijos = contarCostosFijos ? (fijoPorBanoMes/30.44 * diasEventoVip * cantidad) : 0;
+    const gastoCostosFijos = contarCostosFijos ? (fijoPorCasillaMes/30.44 * diasEventoVip * cantidad) : 0;
     const totalGeneral = costoViajesTotalVipEv + costoInsumosTotalVipEv + recargoDom + gastoCostosFijos;
 
     html += `<div class="result">
