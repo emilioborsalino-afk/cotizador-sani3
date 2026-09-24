@@ -499,8 +499,8 @@
     </div>
     <div class="field-row" id="margenRow" style="margin-top:10px;display:none;">
       <div class="field">
-        <label for="cfgMargen">Margen objetivo sobre el costo (%)</label>
-        <input type="number" id="cfgMargen" value="35" step="1" min="0" max="90" oninput="calcular()">
+        <label for="cfgMargen">Ganancia que querés por baño/casilla ($)</label>
+        <input type="number" id="cfgMargen" value="50000" step="1000" min="0" oninput="calcular()">
       </div>
     </div>
   </section>
@@ -915,11 +915,11 @@ function calcular(){
   const fijoPorBanoMes = costoFijoPorBanoMes(c);
   const fijoPorCasillaMes = costoFijoPorBanoMes(c, c.precioCasillaVip);
   const modoPrecioAuto = document.getElementById('modoPrecioAuto').checked;
-  const margenPct = parseFloat(document.getElementById('cfgMargen').value) || 0;
+  const gananciaDeseada = parseFloat(document.getElementById('cfgMargen').value) || 0;
 
   function precioAutomatico(costoTotalCotizacion, cantidadUnidades){
     const costoPorUnidad = costoTotalCotizacion / Math.max(1, cantidadUnidades);
-    const precio = costoPorUnidad / (1 - Math.min(90, margenPct)/100);
+    const precio = costoPorUnidad + gananciaDeseada;
     return Math.round(precio/1000)*1000;
   }
 
