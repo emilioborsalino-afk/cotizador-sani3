@@ -493,16 +493,6 @@
       <label for="contarCostosFijos" style="cursor:pointer;">Contar costos fijos de estructura (monotributo, seguros, impuestos, galpón, amortización)</label>
       <input type="checkbox" id="contarCostosFijos" checked onchange="calcular()" style="width:20px;height:20px;">
     </div>
-    <div class="toggle-row">
-      <label for="modoPrecioAuto" style="cursor:pointer;">Calcular precio automáticamente (costo + margen, nunca da negativo)</label>
-      <input type="checkbox" id="modoPrecioAuto" onchange="toggleModoPrecio()" style="width:20px;height:20px;">
-    </div>
-    <div class="field-row" id="margenRow" style="margin-top:10px;display:none;">
-      <div class="field">
-        <label for="cfgMargen">Ganancia que querés por baño/casilla ($)</label>
-        <input type="number" id="cfgMargen" value="50000" step="1000" min="0" oninput="calcular()">
-      </div>
-    </div>
   </section>
 
   <section id="obraFields">
@@ -890,17 +880,6 @@ function minutosAcomodoTotal(cantidad, c){
   return total;
 }
 
-function toggleModoPrecio(){
-  const auto = document.getElementById('modoPrecioAuto').checked;
-  document.getElementById('margenRow').style.display = auto ? 'flex' : 'none';
-  ['alquiler','alquilerEvento','precioVip','precioEventoVip'].forEach(id=>{
-    const el = document.getElementById(id);
-    el.readOnly = auto;
-    el.style.opacity = auto ? '0.6' : '1';
-  });
-  calcular();
-}
-
 function calcular(){
   const c = cfg();
   const costoMin = costoPorMinuto(c);
@@ -914,14 +893,6 @@ function calcular(){
   const contarCostosFijos = document.getElementById('contarCostosFijos').checked;
   const fijoPorBanoMes = costoFijoPorBanoMes(c);
   const fijoPorCasillaMes = costoFijoPorBanoMes(c, c.precioCasillaVip);
-  const modoPrecioAuto = document.getElementById('modoPrecioAuto').checked;
-  const gananciaDeseada = parseFloat(document.getElementById('cfgMargen').value) || 0;
-
-  function precioAutomatico(costoTotalCotizacion, cantidadUnidades){
-    const costoPorUnidad = costoTotalCotizacion / Math.max(1, cantidadUnidades);
-    const precio = costoPorUnidad + gananciaDeseada;
-    return Math.round(precio/1000)*1000;
-  }
 
   let html = '';
   let totalPorBano = 0;
@@ -991,9 +962,6 @@ function calcular(){
       html += `<p class="note" style="margin-top:-10px;">${notaViajes} — los desagotes de servicio atienden los ${cantidad} baños en un solo viaje. Disgregante, papel y mano de obra en el baño sí se multiplican: ${numDesagotes} desagote${numDesagotes>1?'s':''} × ${cantidad} baño${cantidad>1?'s':''} = ${serviciosTotales} servicios.</p>`;
     }
 
-    if(modoPrecioAuto){
-      document.getElementById('alquiler').value = precioAutomatico(totalGeneral, cantidad);
-    }
     const precioBano = parseFloat(document.getElementById('alquiler').value) || 0;
     const semanas = weeksActuales();
     const desagotesIncluidos = semanas; // 1 por semana viene incluido en el precio del alquiler
@@ -1018,6 +986,11 @@ function calcular(){
       html += `<div class="margin-box ${gananciaReal>=0?'good':'bad'}">
         <span>Ganancia real (ingreso − gastos)</span>
         <span class="amt">${fmt(gananciaReal)}</span>
+      </div>`;
+      const totalGastosMasPrecio = totalGeneral + ingresoTotalGeneral;
+      html += `<div class="margin-box good">
+        <span>Total (gastos + precio que pusiste)</span>
+        <span class="amt">${fmt(totalGastosMasPrecio)}</span>
       </div>`;
     }
     html += `</div>`;
@@ -1080,9 +1053,6 @@ function calcular(){
     html += `<div class="ledger-row grand"><span class="lbl">Total de gastos</span><span class="amt2">${fmt(totalGeneral)}</span></div>
       </div></div>`;
 
-    if(modoPrecioAuto){
-      document.getElementById('alquilerEvento').value = precioAutomatico(totalGeneral, cantidad);
-    }
     const precioBanoEv = parseFloat(document.getElementById('alquilerEvento').value) || 0;
     const ingresoDesagotesTotalEv = precioDesagote * desagotesEvento * cantidad;
     const ingresoPrecioTotalEv = precioBanoEv * cantidad;
@@ -1100,6 +1070,11 @@ function calcular(){
       html += `<div class="margin-box ${gananciaRealEv>=0?'good':'bad'}">
         <span>Ganancia real (ingreso − gastos)</span>
         <span class="amt">${fmt(gananciaRealEv)}</span>
+      </div>`;
+      const totalGastosMasPrecioEv = totalGeneral + ingresoTotalGeneralEv;
+      html += `<div class="margin-box good">
+        <span>Total (gastos + precio que pusiste)</span>
+        <span class="amt">${fmt(totalGastosMasPrecioEv)}</span>
       </div>`;
     }
     html += `</div>`;
@@ -1167,9 +1142,6 @@ function calcular(){
     html += `<div class="ledger-row grand"><span class="lbl">Total de gastos</span><span class="amt2">${fmt(totalGeneral)}</span></div>
       </div></div>`;
 
-    if(modoPrecioAuto){
-      document.getElementById('precioVip').value = precioAutomatico(totalGeneral, cantidad);
-    }
     const precioVip = parseFloat(document.getElementById('precioVip').value) || 0;
     const precioDesagoteVip = parseFloat(document.getElementById('precioDesagoteVip').value) || 0;
     const desagotesIncluidosVip = esQuincenalVip ? 1 : semanasServicioVip; // 1 desagote/semana incluido en el precio
@@ -1189,6 +1161,11 @@ function calcular(){
       html += `<div class="margin-box ${gananciaRealVip>=0?'good':'bad'}">
         <span>Ganancia real (ingreso − gastos)</span>
         <span class="amt">${fmt(gananciaRealVip)}</span>
+      </div>`;
+      const totalGastosMasPrecioVip = totalGeneral + ingresoVipTotal;
+      html += `<div class="margin-box good">
+        <span>Total (gastos + precio que pusiste)</span>
+        <span class="amt">${fmt(totalGastosMasPrecioVip)}</span>
       </div>`;
     }
     html += `</div>`;
@@ -1246,9 +1223,6 @@ function calcular(){
     html += `<div class="ledger-row grand"><span class="lbl">Total de gastos</span><span class="amt2">${fmt(totalGeneral)}</span></div>
       </div></div>`;
 
-    if(modoPrecioAuto){
-      document.getElementById('precioEventoVip').value = precioAutomatico(totalGeneral, cantidad);
-    }
     const precioEventoVip = parseFloat(document.getElementById('precioEventoVip').value) || 0;
     const precioDesagoteVipEv = parseFloat(document.getElementById('precioDesagoteVipEvento').value) || 0;
     const ingresoDesagoteVipEv = precioDesagoteVipEv * desagotesEventoVip * cantidad;
@@ -1265,6 +1239,11 @@ function calcular(){
       html += `<div class="margin-box ${gananciaRealVipEv>=0?'good':'bad'}">
         <span>Ganancia real (ingreso − gastos)</span>
         <span class="amt">${fmt(gananciaRealVipEv)}</span>
+      </div>`;
+      const totalGastosMasPrecioVipEv = totalGeneral + ingresoVipEvTotal;
+      html += `<div class="margin-box good">
+        <span>Total (gastos + precio que pusiste)</span>
+        <span class="amt">${fmt(totalGastosMasPrecioVipEv)}</span>
       </div>`;
     }
     html += `</div>`;
