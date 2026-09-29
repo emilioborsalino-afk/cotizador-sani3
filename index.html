@@ -537,6 +537,7 @@
       <button class="pill" id="ev1" onclick="setDesagotesEvento(1)">1</button>
       <button class="pill" id="ev2" onclick="setDesagotesEvento(2)">2</button>
       <button class="pill" id="ev3" onclick="setDesagotesEvento(3)">3</button>
+      <button class="pill" id="ev4" onclick="setDesagotesEvento(4)">4</button>
     </div>
     <div class="field-row" style="margin-top:12px;">
       <div class="field">
@@ -607,6 +608,7 @@
         <button class="pill" id="vipEv1" onclick="setDesagotesEventoVip(1)">1</button>
         <button class="pill" id="vipEv2" onclick="setDesagotesEventoVip(2)">2</button>
         <button class="pill" id="vipEv3" onclick="setDesagotesEventoVip(3)">3</button>
+        <button class="pill" id="vipEv4" onclick="setDesagotesEventoVip(4)">4</button>
       </div>
       <div class="field-row" style="margin-top:12px;">
         <div class="field">
@@ -648,12 +650,12 @@ let tipo = 'obra';
 let duracion = 3; // 1, 2, o 3 (3 = "3+ semanas / mensual")
 let semanasServicio = 4; // solo relevante cuando duracion === 3
 let frecuencia = 1; // desagotes por semana: 1, 2 o 3
-let desagotesEvento = 0; // 0 a 3, para baño de evento
+let desagotesEvento = 0; // 0 a 4, para baño de evento
 let tamanoVip = 'chica'; // 'chica' (2 inodoros) o 'grande' (4 inodoros)
 let modoVip = 'mensual'; // 'evento' o 'mensual'
 let semanasServicioVip = 4;
 let frecuenciaVip = 1;
-let desagotesEventoVip = 0; // 0 a 3, para casilla VIP tipo evento
+let desagotesEventoVip = 0; // 0 a 4, para casilla VIP tipo evento
 const precioPorDuracion = {1:25000, 2:35000, 3:50000};
 const semanasPorDuracion = {1:1, 2:2}; // para duracion 3 se usa semanasServicio (pill 3 o 4)
 
@@ -689,7 +691,7 @@ function setFrecuencia(n){
 
 function setDesagotesEvento(n){
   desagotesEvento = n;
-  [0,1,2,3].forEach(k=> document.getElementById('ev'+k).classList.toggle('active', k===n));
+  [0,1,2,3,4].forEach(k=> document.getElementById('ev'+k).classList.toggle('active', k===n));
   calcular();
 }
 
@@ -751,7 +753,7 @@ function setModoVip(m){
 
 function setDesagotesEventoVip(n){
   desagotesEventoVip = n;
-  [0,1,2,3].forEach(k=> document.getElementById('vipEv'+k).classList.toggle('active', k===n));
+  [0,1,2,3,4].forEach(k=> document.getElementById('vipEv'+k).classList.toggle('active', k===n));
   calcular();
 }
 
