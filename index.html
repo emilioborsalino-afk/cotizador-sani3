@@ -326,14 +326,14 @@
           <input type="number" id="cfgGasoil" value="2540" step="1">
         </div>
         <div class="field">
-          <label for="cfgConsumo">Consumo Hilux (L/100km)</label>
-          <input type="number" id="cfgConsumo" value="10.5" step="0.1">
+          <label for="cfgConsumo">Consumo liviano — solo o hasta 2 baños (L/100km, 8 km/L)</label>
+          <input type="number" id="cfgConsumo" value="12.5" step="0.1">
         </div>
       </div>
       <div class="field-row">
         <div class="field">
-          <label for="cfgConsumoVip">Consumo con casilla VIP (L/100km, 1L cada 9km)</label>
-          <input type="number" id="cfgConsumoVip" value="11.11" step="0.1">
+          <label for="cfgConsumoVip">Consumo cargado — casilla VIP o 10 baños (L/100km, 5 km/L)</label>
+          <input type="number" id="cfgConsumoVip" value="20" step="0.1">
         </div>
         <div class="field">
           <label for="cfgVelocidad">Velocidad promedio de ruta (km/h)</label>
@@ -343,7 +343,7 @@
       <div class="field-row">
         <div class="field">
           <label for="cfgDesgaste">Desgaste vehículo (% del combustible)</label>
-          <input type="number" id="cfgDesgaste" value="50" step="1">
+          <input type="number" id="cfgDesgaste" value="100" step="1">
         </div>
       </div>
 
@@ -696,7 +696,7 @@ function setDesagotesEvento(n){
 }
 
 const cfgIds = ['cfgGasoil','cfgConsumo','cfgConsumoVip','cfgDesgaste','cfgVelocidad','cfgEmpleados','cfgMinDesagote','cfgMinAcomodo1','cfgMinAcomodo10','cfgDisgregante','cfgPapel','cfgMonotributos','cfgSeguros','cfgImpuestos','cfgGalpon','cfgPrecioBano','cfgVidaUtilBano','cfgPrecioCasillaVip','cfgBanosEstimados'];
-const defaults = {cfgGasoil:2540, cfgConsumo:10.5, cfgConsumoVip:11.11, cfgDesgaste:50, cfgVelocidad:50, cfgEmpleados:2500000, cfgMinDesagote:15, cfgMinAcomodo1:15, cfgMinAcomodo10:40, cfgDisgregante:495, cfgPapel:270.83, cfgMonotributos:523000, cfgSeguros:200000, cfgImpuestos:50000, cfgGalpon:115000, cfgPrecioBano:500000, cfgVidaUtilBano:10, cfgPrecioCasillaVip:10000000, cfgBanosEstimados:140};
+const defaults = {cfgGasoil:2540, cfgConsumo:12.5, cfgConsumoVip:20, cfgDesgaste:100, cfgVelocidad:50, cfgEmpleados:2500000, cfgMinDesagote:15, cfgMinAcomodo1:15, cfgMinAcomodo10:40, cfgDisgregante:495, cfgPapel:270.83, cfgMonotributos:523000, cfgSeguros:200000, cfgImpuestos:50000, cfgGalpon:115000, cfgPrecioBano:500000, cfgVidaUtilBano:10, cfgPrecioCasillaVip:10000000, cfgBanosEstimados:140};
 
 function loadSaved(){
   try{
@@ -808,7 +808,7 @@ function cfg(){
   return {
     gasoil: g('cfgGasoil'),
     consumo: g('cfgConsumo'),
-    consumoVip: g('cfgConsumoVip') || 11.11,
+    consumoVip: g('cfgConsumoVip') || 20,
     desgastePct: g('cfgDesgaste'),
     velocidad: g('cfgVelocidad') || 50,
     empleados: g('cfgEmpleados'),
@@ -840,6 +840,15 @@ function costoPorMinuto(c){
   const horasMes = horasSemana * 4.33;
   const minMes = horasMes * 60;
   return minMes > 0 ? c.empleados / minMes : 0;
+}
+
+// Consumo según qué tan cargada va la camioneta: liviano (sola o hasta 2 baños),
+// cargado (casilla VIP o 10 baños), e interpolado linealmente entre 2 y 10 baños.
+function consumoSegunCarga(tipoActual, cantidadActual, c){
+  if(tipoActual === 'vip') return c.consumoVip;
+  if(cantidadActual >= 10) return c.consumoVip;
+  if(cantidadActual <= 2) return c.consumo;
+  return c.consumo + (c.consumoVip - c.consumo) * (cantidadActual-2)/8;
 }
 
 function costoViaje(distanciaKm, c, costoMin, consumoOverride){
@@ -887,7 +896,7 @@ function calcular(){
   const costoMin = costoPorMinuto(c);
   const distancia = parseFloat(document.getElementById('distancia').value) || 0;
   const cantidad = Math.max(1, parseInt(document.getElementById('cantidad').value) || 1);
-  const viaje = costoViaje(distancia, c, costoMin, tipo==='vip' ? c.consumoVip : null);
+  const viaje = costoViaje(distancia, c, costoMin, consumoSegunCarga(tipo, cantidad, c));
   const recargoDom = recargoDomingo();
   const precioDesagote = parseFloat(document.getElementById('precioDesagote').value) || 0;
   const contarManoObraLugar = document.getElementById('contarManoObraLugar').checked;
