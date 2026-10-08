@@ -285,6 +285,22 @@
   .trip-block{margin-bottom:16px;}
   .trip-block h3{font-size:13px;font-weight:600;opacity:0.6;margin:0 0 6px;}
 
+
+  .share-row{display:flex;flex-direction:column;gap:10px;margin:4px 0 18px;}
+  .share-btn{
+    flex:1;
+    padding:13px 10px;
+    border:1.5px solid var(--line);
+    border-radius:8px;
+    background:var(--card-bg);
+    color:var(--ink);
+    font-family:var(--font-sans);
+    font-size:14px;
+    font-weight:600;
+    cursor:pointer;
+  }
+  .share-btn.wa{background:#1FA855;border-color:#1FA855;color:#fff;}
+
   .margin-box{
     margin-top:6px;
     padding:12px 14px;
@@ -641,6 +657,10 @@
   </section>
 
   <div id="result"></div>
+
+  <div class="share-row" id="shareRow">
+    <button class="share-btn wa" id="btnImagen" onclick="compartirImagen()">Compartir imagen de la cotización</button>
+  </div>
 
   <p class="note" id="footnote"></p>
 </div>
@@ -1264,6 +1284,335 @@ function calcular(){
   document.getElementById('result').innerHTML = html;
   document.getElementById('footnote').textContent =
     `Mano de obra: $${Math.round(costoMin).toLocaleString('es-AR')}/min (calculado de $${c.empleados.toLocaleString('es-AR')} mensuales entre los dos empleados, 44hs/semana c/u). Velocidad de ruta y distancia son estimaciones — ajustalas si tenés el dato real.`;
+}
+
+// ---- Compartir: link editable o imagen de solo lectura ----
+function avisoBoton(id, texto){
+  const b = document.getElementById(id);
+  if(!b) return;
+  const original = b.dataset.original || b.textContent;
+  b.dataset.original = original;
+  b.textContent = texto;
+  setTimeout(()=>{ b.textContent = original; }, 2200);
+}
+
+const IMG_W = 1000, IMG_M = 40, IMG_ESC = 1.5;
+const COLORES_TIPO = {
+  obra:   {bg:'#E1980C', fg:'#5C3B02'},
+  evento: {bg:'#3F7D52', fg:'#F4FBF6'},
+  vip:    {bg:'#6B4FA0', fg:'#F6F3FB'}
+};
+
+// Dibuja la pantalla completa (pestañas, datos cargados, resultado y datos base) sin
+// campos editables. Con dry=true solo mide y devuelve el alto total.
+function dibujarCotizacion(ctx, dry){
+  const W = IMG_W, M = IMG_M, CW = W - 2*M;
+  const SANS = '"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  const MONO = '"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace';
+  const C = {ink:'#1F2421', card:'#F7F8F6', line:'#C7CCC5', soft:'#6B716C', good:'#2F6B42', bad:'#B23A2E', goodBg:'#DCEBE0', badBg:'#F3D9D5'};
+  const f = (peso, px, fam) => peso + ' ' + px + 'px ' + (fam || SANS);
+  let y = 0;
+
+  const oculto = el => !!(el.style && el.style.display === 'none');
+  const ruta = (x, yy, w, h, r)=>{
+    ctx.beginPath();
+    ctx.moveTo(x+r, yy);
+    ctx.arcTo(x+w, yy, x+w, yy+h, r);
+    ctx.arcTo(x+w, yy+h, x, yy+h, r);
+    ctx.arcTo(x, yy+h, x, yy, r);
+    ctx.arcTo(x, yy, x+w, yy, r);
+    ctx.closePath();
+  };
+  const caja = (x, yy, w, h, r, fill, stroke, lw)=>{
+    if(dry) return;
+    ruta(x, yy, w, h, r);
+    if(fill){ ctx.fillStyle = fill; ctx.fill(); }
+    if(stroke){ ctx.strokeStyle = stroke; ctx.lineWidth = lw || 1.5; ctx.stroke(); }
+  };
+  const linea = (x1, yy, x2, color, lw)=>{
+    if(dry) return;
+    ctx.beginPath(); ctx.moveTo(x1, yy); ctx.lineTo(x2, yy);
+    ctx.strokeStyle = color; ctx.lineWidth = lw || 1; ctx.stroke();
+  };
+  const texto = (t, x, yy, font, color, align)=>{
+    if(dry) return;
+    ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(t, x, yy);
+  };
+  const envolver = (t, font, maxW)=>{
+    ctx.font = font;
+    const out = []; let cur = '';
+    String(t).split(/\s+/).filter(Boolean).forEach(p=>{
+      const prueba = cur ? cur + ' ' + p : p;
+      if(ctx.measureText(prueba).width > maxW && cur){ out.push(cur); cur = p; } else cur = prueba;
+    });
+    if(cur) out.push(cur);
+    return out.length ? out : [''];
+  };
+  const fotoLista = im => im && im.complete && im.naturalWidth;
+  const cover = (im, x, yy, w, h, r)=>{
+    if(dry) return;
+    ctx.save(); ruta(x, yy, w, h, r); ctx.clip();
+    const s = Math.max(w/im.naturalWidth, h/im.naturalHeight), sw = w/s, sh = h/s;
+    ctx.drawImage(im, (im.naturalWidth-sw)/2, (im.naturalHeight-sh)/2, sw, sh, x, yy, w, h);
+    ctx.restore();
+  };
+
+  // ---- Encabezado ----
+  y = M;
+  const logo = document.querySelector('img.eyebrow');
+  const logoH = 64; let logoW = 0;
+  if(fotoLista(logo)){ logoW = logoH * logo.naturalWidth / logo.naturalHeight; if(!dry) ctx.drawImage(logo, M, y, logoW, logoH); }
+  texto('Calculadora de costos de alquiler', M + (logoW ? logoW + 24 : 0), y + logoH/2 + 11, f(700, 32), C.ink);
+  y += logoH + 30;
+
+  // ---- Pestañas ----
+  const tabs = [['tabObra','obra'], ['tabEvento','evento'], ['tabVip','vip']];
+  const gapT = 14, tw = (CW - 2*gapT) / 3;
+  const conFoto = tabs.some(([id])=> fotoLista(document.querySelector('#' + id + ' img')));
+  const th = conFoto ? 172 : 64;
+  tabs.forEach(([id, t], i)=>{
+    const el = document.getElementById(id), act = (tipo === t), x = M + i*(tw + gapT), col = COLORES_TIPO[t];
+    caja(x, y, tw, th, 12, act ? col.bg : C.card, act ? col.bg : C.line, 2);
+    const im = el.querySelector('img');
+    if(conFoto && fotoLista(im)) cover(im, x + (tw-84)/2, y + 12, 84, 112, 8);
+    const lab = (el.querySelector('.tab-label') || el).textContent.trim();
+    texto(lab, x + tw/2, conFoto ? y + th - 20 : y + th/2 + 8, f(600, 23), act ? col.fg : C.ink, 'center');
+  });
+  y += th + 30;
+
+  // ---- Bloques de datos (campos, botones y tildes), de arriba hacia abajo ----
+  const titulo = (t, sub, compacto)=>{
+    y += sub ? 6 : (compacto ? 14 : 20);
+    texto(t, M, y + 20, f(sub ? 400 : 600, compacto ? 18 : (sub ? 19 : 21)), C.soft);
+    y += compacto ? 30 : 32;
+  };
+  const textoControl = ctl => {
+    if(!ctl) return '';
+    if(ctl.tagName === 'SELECT'){ const o = ctl.options[ctl.selectedIndex]; return o ? o.text : ''; }
+    if(ctl.type === 'number' && ctl.value !== '' && isFinite(Number(ctl.value))) return Number(ctl.value).toLocaleString('es-AR', {maximumFractionDigits: 2});
+    return ctl.value;
+  };
+  const fila = (campos, compacto)=>{
+    if(!campos.length) return;
+    const n = campos.length, gap = 16, colW = (CW - (n-1)*gap) / n;
+    if(compacto){
+      const fl = 16, valW = 150;
+      const bloques = campos.map(el=>{
+        const lab = el.querySelector('label'), ctl = el.querySelector('input,select');
+        return {lineas: envolver(lab ? lab.textContent.trim() : '', f(400, fl), colW - valW - 14), val: textoControl(ctl)};
+      });
+      const maxL = Math.max(...bloques.map(b=>b.lineas.length));
+      bloques.forEach((b, i)=>{
+        const x = M + i*(colW + gap);
+        b.lineas.forEach((l, k)=> texto(l, x, y + 18 + k*20, f(400, fl), C.soft));
+        texto(b.val, x + colW, y + 19, f(600, 19, MONO), C.ink, 'right');
+      });
+      y += maxL*20 + 12;
+      return;
+    }
+    const bloques = campos.map(el=>{
+      const lab = el.querySelector('label'), ctl = el.querySelector('input,select');
+      return {lineas: envolver(lab ? lab.textContent.trim() : '', f(400, 18), colW), val: textoControl(ctl)};
+    });
+    const maxL = Math.max(...bloques.map(b=>b.lineas.length));
+    bloques.forEach((b, i)=>{
+      const x = M + i*(colW + gap);
+      b.lineas.forEach((l, k)=> texto(l, x, y + 18 + k*22, f(400, 18), C.soft));
+      const by = y + maxL*22 + 6;
+      caja(x, by, colW, 54, 8, '#FFFFFF', C.line, 1.5);
+      texto(b.val, x + 16, by + 35, f(600, 24, MONO), C.ink);
+    });
+    y += maxL*22 + 6 + 54 + 16;
+  };
+  const pills = (grupo, col)=>{
+    const botones = Array.from(grupo.querySelectorAll('button')).filter(b=> !oculto(b));
+    if(!botones.length) return;
+    const n = botones.length, gap = 10, pw = (CW - (n-1)*gap) / n;
+    const s1 = n >= 5 ? 20 : 22;
+    const datos = botones.map(b=>{
+      const partes = Array.from(b.childNodes).map(nd=> nd.textContent.replace(/\s+/g,' ').trim()).filter(Boolean);
+      const ls = [];
+      partes.forEach((p, i)=> envolver(p, f(i ? 400 : 600, i ? s1-4 : s1), pw - 16).forEach(l=> ls.push({t:l, extra:i > 0})));
+      return {ls, act: b.classList.contains('active')};
+    });
+    const h = Math.max(54, Math.max(...datos.map(d=>d.ls.length)) * 25 + 20);
+    const cc = col || COLORES_TIPO.obra;
+    datos.forEach((d, i)=>{
+      const x = M + i*(pw + gap);
+      caja(x, y, pw, h, 6, d.act ? cc.bg : C.card, d.act ? cc.bg : C.line, 1.5);
+      const alto = d.ls.length * 25, y0 = y + (h - alto)/2 + 19;
+      d.ls.forEach((l, k)=> texto(l.t, x + pw/2, y0 + k*25, f(l.extra ? 400 : 600, l.extra ? s1-4 : s1), d.act ? cc.fg : (l.extra ? C.soft : C.ink), 'center'));
+    });
+    y += h + 14;
+  };
+  const interruptor = el=>{
+    const lab = el.querySelector('label'), chk = el.querySelector('input[type=checkbox]');
+    const ls = envolver(lab ? lab.textContent.trim() : '', f(400, 21), CW - 70);
+    const h = Math.max(ls.length * 26, 34);
+    ls.forEach((l, k)=> texto(l, M, y + 24 + k*26, f(400, 21), C.ink));
+    const bx = M + CW - 34, by = y + (h - 34)/2;
+    caja(bx, by, 34, 34, 7, chk && chk.checked ? C.ink : '#FFFFFF', chk && chk.checked ? C.ink : C.line, 2);
+    if(chk && chk.checked && !dry){
+      ctx.beginPath(); ctx.moveTo(bx + 8, by + 18); ctx.lineTo(bx + 15, by + 25); ctx.lineTo(bx + 27, by + 10);
+      ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 4; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.stroke();
+    }
+    y += h + 16;
+  };
+  const recorrer = (raiz, col, compacto)=>{
+    Array.from(raiz.children).forEach(el=>{
+      if(oculto(el)) return;
+      if(el.matches('.section-title')){
+        const dim = !!el.style.opacity && parseFloat(el.style.opacity) < 1;
+        titulo(el.textContent.trim(), dim, compacto);
+      } else if(el.matches('.field-row')){
+        fila(Array.from(el.children).filter(c=> c.matches('.field') && !oculto(c)), compacto);
+      } else if(el.matches('.field')){
+        fila([el], compacto);
+      } else if(el.matches('.pillgroup')){
+        pills(el, col);
+      } else if(el.matches('.toggle-row')){
+        interruptor(el);
+      } else if(el.matches('.note')){
+        /* las notas no van en la imagen */
+      } else {
+        recorrer(el, col, compacto);
+      }
+    });
+  };
+  const colorDe = sec => sec.id === 'obraFields' ? COLORES_TIPO.obra : sec.id === 'eventoFields' ? COLORES_TIPO.evento : sec.id === 'vipFields' ? COLORES_TIPO.vip : null;
+  document.querySelectorAll('section').forEach(sec=>{
+    if(oculto(sec)) return;
+    recorrer(sec, colorDe(sec), false);
+    y += 8;
+  });
+
+  // ---- Resultado ----
+  y += 14;
+  const res = document.getElementById('result');
+  const rt = res.querySelector('.result-total');
+  if(rt){
+    const lab = rt.querySelector('.label').textContent.replace(/\s+/g,' ').trim();
+    const val = rt.querySelector('.value').textContent.trim();
+    const ls = envolver(lab, f(600, 25), CW - 380);
+    const h = Math.max(110, ls.length*32 + 50);
+    caja(M, y, CW, h, 0, C.card, null);
+    if(!dry){ ctx.fillStyle = C.ink; ctx.fillRect(M, y, CW, 5); }
+    ls.forEach((l, k)=> texto(l, M + 24, y + h/2 - (ls.length-1)*16 + 9 + k*32, f(600, 25), C.ink));
+    texto(val, M + CW - 24, y + h/2 + 17, f(700, 52, MONO), C.ink, 'right');
+    y += h + 26;
+  }
+  res.querySelectorAll('.trip-block, .margin-box').forEach(el=>{
+    if(el.matches('.margin-box')){
+      const sp = el.querySelectorAll('span'), bueno = el.classList.contains('good');
+      const ls = envolver(sp[0].textContent.replace(/\s+/g,' ').trim(), f(700, 22), CW - 300);
+      const h = Math.max(70, ls.length*28 + 30);
+      caja(M, y, CW, h, 8, bueno ? C.goodBg : C.badBg, null);
+      ls.forEach((l, k)=> texto(l, M + 20, y + h/2 - (ls.length-1)*14 + 8 + k*28, f(700, 22), bueno ? C.good : C.bad));
+      texto(sp[1].textContent.trim(), M + CW - 20, y + h/2 + 10, f(700, 28, MONO), bueno ? C.good : C.bad, 'right');
+      y += h + 14;
+    } else {
+      const h3 = el.querySelector('h3');
+      if(h3){ texto(h3.textContent.trim(), M, y + 24, f(700, 26), C.ink); y += 40; }
+      el.querySelectorAll('.ledger-row').forEach(r=>{
+        const lbl = r.querySelector('.lbl'), amt = r.querySelector('.amt2'), grand = r.classList.contains('grand');
+        const ls = envolver(lbl ? lbl.textContent.replace(/\s+/g,' ').trim() : '', f(grand ? 700 : 400, 21), CW - 200);
+        const h = ls.length*27 + 16;
+        if(grand) linea(M, y, M + CW, C.ink, 2); else linea(M, y + h, M + CW, C.line, 1);
+        ls.forEach((l, k)=> texto(l, M, y + 26 + k*27, f(grand ? 700 : 400, 21), C.ink));
+        texto(amt ? amt.textContent.trim() : '', M + CW, y + 27, f(grand ? 700 : 600, 23, MONO), C.ink, 'right');
+        y += h;
+      });
+      y += 22;
+    }
+  });
+
+  // ---- Datos base usados ----
+  const base = document.querySelector('#configPanel .details-body');
+  if(base){
+    y += 10;
+    linea(M, y, M + CW, C.line, 2);
+    y += 6;
+    texto('Datos base usados en esta cotización', M, y + 30, f(700, 22), C.ink);
+    y += 36;
+    recorrer(base, null, true);
+  }
+
+  // ---- Pie ----
+  y += 18;
+  texto('Sani3 Baños Portátiles · ' + new Date().toLocaleDateString('es-AR'), W/2, y + 14, f(400, 17), C.soft, 'center');
+  y += 44;
+  return y;
+}
+
+function crearImagenCotizacion(){
+  const prueba = document.createElement('canvas');
+  prueba.width = 10; prueba.height = 10;
+  const alto = Math.ceil(dibujarCotizacion(prueba.getContext('2d'), true));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(IMG_W * IMG_ESC);
+  canvas.height = Math.round(alto * IMG_ESC);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(IMG_ESC, IMG_ESC);
+  ctx.fillStyle = '#EEF0EE';
+  ctx.fillRect(0, 0, IMG_W, alto);
+  dibujarCotizacion(ctx, false);
+  return canvas;
+}
+
+function mostrarImagen(url){
+  const viejo = document.getElementById('visorImagen');
+  if(viejo) viejo.remove();
+  const v = document.createElement('div');
+  v.id = 'visorImagen';
+  v.style.cssText = 'position:fixed;top:0;left:0;right:0;bottom:0;z-index:100;background:rgba(20,24,22,0.94);overflow:auto;padding:16px;';
+  const caja = document.createElement('div');
+  caja.style.cssText = 'max-width:640px;margin:0 auto;';
+  const msg = document.createElement('p');
+  msg.textContent = 'Mantené apretada la imagen (o clic derecho en la compu) para compartirla o guardarla.';
+  msg.style.cssText = 'color:#fff;font-size:15px;line-height:1.4;margin:0 0 12px;';
+  const fila = document.createElement('div');
+  fila.style.cssText = 'display:flex;gap:10px;margin-bottom:12px;';
+  const desc = document.createElement('a');
+  desc.textContent = 'Descargar imagen';
+  desc.href = url;
+  desc.download = 'cotizacion-sani3.png';
+  desc.style.cssText = 'flex:1;text-align:center;padding:13px 10px;border-radius:8px;background:#1FA855;color:#fff;font-weight:600;font-size:15px;text-decoration:none;';
+  const cerrar = document.createElement('button');
+  cerrar.textContent = 'Cerrar';
+  cerrar.style.cssText = 'flex:1;padding:13px 10px;border-radius:8px;border:1.5px solid #fff;background:transparent;color:#fff;font-weight:600;font-size:15px;cursor:pointer;';
+  cerrar.onclick = ()=> v.remove();
+  fila.appendChild(desc); fila.appendChild(cerrar);
+  const img = document.createElement('img');
+  img.alt = 'Cotización Sani3';
+  img.src = url;
+  img.style.cssText = 'width:100%;display:block;border-radius:8px;background:#fff;';
+  caja.appendChild(msg); caja.appendChild(fila); caja.appendChild(img);
+  v.appendChild(caja);
+  document.body.appendChild(v);
+}
+
+async function compartirImagen(){
+  const boton = document.getElementById('btnImagen');
+  const original = boton.dataset.original || boton.textContent;
+  boton.dataset.original = original;
+  boton.textContent = 'Armando imagen…';
+  await new Promise(r=> setTimeout(r, 30));
+  let canvas;
+  try{ canvas = crearImagenCotizacion(); }
+  catch(e){ boton.textContent = 'No se pudo armar la imagen'; setTimeout(()=>{ boton.textContent = original; }, 2500); return; }
+  boton.textContent = original;
+  try{
+    const blob = await new Promise(res=> canvas.toBlob(res, 'image/png'));
+    const archivo = new File([blob], 'cotizacion-sani3.png', {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[archivo]})){
+      await navigator.share({files:[archivo], title:'Cotización Sani3'});
+      return;
+    }
+  }catch(e){
+    if(e && e.name === 'AbortError') return;
+  }
+  mostrarImagen(canvas.toDataURL('image/png'));
 }
 
 loadSaved();
