@@ -1527,17 +1527,6 @@ function dibujarCotizacion(ctx, dry){
     }
   });
 
-  // ---- Datos base usados ----
-  const base = document.querySelector('#configPanel .details-body');
-  if(base){
-    y += 10;
-    linea(M, y, M + CW, C.line, 2);
-    y += 6;
-    texto('Datos base usados en esta cotización', M, y + 30, f(700, 22), C.ink);
-    y += 36;
-    recorrer(base, null, true);
-  }
-
   // ---- Pie ----
   y += 18;
   texto('Sani3 Baños Portátiles · ' + new Date().toLocaleDateString('es-AR'), W/2, y + 14, f(400, 17), C.soft, 'center');
