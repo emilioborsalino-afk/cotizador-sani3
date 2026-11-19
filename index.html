@@ -1040,8 +1040,7 @@ function calcular(){
     const ingresoTotalGeneral = ingresoAlquilerTotal + ingresoDesagotesTotal;
 
     ultimoIngreso = {titulo:'Alquiler de baños químicos', items:[
-      {desc:'Alquiler de baño químico — ' + (duracion===3 ? semanas + ' semanas (mensual)' : semanas + (semanas>1?' semanas':' semana')), det:'Incluye 1 desagote por semana', cant:cantidad, unit:precioBano},
-      {desc:'Desagote extra', det:'', cant:desagotesExtraTotal, unit:precioDesagote}
+      {desc:'Alquiler de ' + cantidad + ' baño' + (cantidad>1?'s':'') + ' químico' + (cantidad>1?'s':'') + ' — ' + (duracion===3 ? semanas + ' semanas (mensual)' : semanas + (semanas>1?' semanas':' semana')), det:'Incluye entrega, ' + numDesagotes + ' servicio' + (numDesagotes>1?'s':'') + ' de desagote y retiro', cant:1, unit:Math.round(totalGeneral + ingresoTotalGeneral)}
     ]};
     if(precioBano > 0 || precioDesagote > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
@@ -1131,8 +1130,7 @@ function calcular(){
     const ingresoTotalGeneralEv = ingresoPrecioTotalEv + ingresoDesagotesTotalEv;
 
     ultimoIngreso = {titulo:'Alquiler de baños químicos para evento', items:[
-      {desc:'Alquiler de baño químico — evento', det:'', cant:cantidad, unit:precioBanoEv},
-      {desc:'Desagote durante el evento', det:'', cant:desagotesEvento*cantidad, unit:precioDesagote}
+      {desc:'Alquiler de ' + cantidad + ' baño' + (cantidad>1?'s':'') + ' químico' + (cantidad>1?'s':'') + ' — evento', det:'Incluye entrega, ' + (desagotesEvento>0 ? desagotesEvento + ' desagote' + (desagotesEvento>1?'s':'') + ' durante el evento y ' : '') + 'retiro', cant:1, unit:Math.round(totalGeneral + ingresoTotalGeneralEv)}
     ]};
     if(precioBanoEv > 0 || precioDesagote > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
@@ -1226,8 +1224,7 @@ function calcular(){
     const ingresoDesagoteExtraVip = precioDesagoteVip * desagotesExtraTotalVip;
     const ingresoVipTotal = (precioVip * cantidad) + ingresoDesagoteExtraVip;
     ultimoIngreso = {titulo:'Alquiler de casilla VIP', items:[
-      {desc:'Alquiler de casilla VIP ' + tamanoVip + ' (' + (tamanoVip==='grande'?4:2) + ' inodoros / ' + (tamanoVip==='grande'?4:2) + ' lavamanos) — ' + semanasServicioVip + ' semanas (mensual)', det:(esQuincenalVip ? 'Incluye 1 desagote' : 'Incluye 1 desagote por semana'), cant:cantidad, unit:precioVip},
-      {desc:'Desagote y limpieza extra', det:'', cant:desagotesExtraTotalVip, unit:precioDesagoteVip}
+      {desc:'Alquiler de ' + (cantidad>1 ? cantidad + ' casillas' : 'casilla') + ' VIP ' + tamanoVip + ' (' + (tamanoVip==='grande'?4:2) + ' inodoros / ' + (tamanoVip==='grande'?4:2) + ' lavamanos) — ' + semanasServicioVip + ' semanas (mensual)', det:'Incluye entrega, instalación, ' + numDesagotesVip + ' servicio' + (numDesagotesVip>1?'s':'') + ' de desagote y limpieza, y retiro', cant:1, unit:Math.round(totalGeneral + ingresoVipTotal)}
     ]};
     if(precioVip > 0 || precioDesagoteVip > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
@@ -1308,8 +1305,7 @@ function calcular(){
     const ingresoDesagoteVipEv = precioDesagoteVipEv * desagotesEventoVip * cantidad;
     const ingresoVipEvTotal = (precioEventoVip * cantidad) + ingresoDesagoteVipEv;
     ultimoIngreso = {titulo:'Alquiler de casilla VIP para evento', items:[
-      {desc:'Alquiler de casilla VIP ' + tamanoVip + ' (' + (tamanoVip==='grande'?4:2) + ' inodoros / ' + (tamanoVip==='grande'?4:2) + ' lavamanos) — evento', det:'Personal de cuidado presente ' + horasCuidado + ' hs', cant:cantidad, unit:precioEventoVip},
-      {desc:'Desagote extra durante el evento', det:'', cant:desagotesEventoVip*cantidad, unit:precioDesagoteVipEv}
+      {desc:'Alquiler de ' + (cantidad>1 ? cantidad + ' casillas' : 'casilla') + ' VIP ' + tamanoVip + ' (' + (tamanoVip==='grande'?4:2) + ' inodoros / ' + (tamanoVip==='grande'?4:2) + ' lavamanos) — evento', det:'Incluye entrega, instalación, personal de cuidado ' + horasCuidado + ' hs' + (desagotesEventoVip>0 ? ', ' + desagotesEventoVip + ' desagote' + (desagotesEventoVip>1?'s':'') : '') + ' y retiro', cant:1, unit:Math.round(totalGeneral + ingresoVipEvTotal)}
     ]};
     if(precioEventoVip > 0 || precioDesagoteVipEv > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
