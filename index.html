@@ -339,7 +339,7 @@
       <div class="field-row">
         <div class="field">
           <label for="cfgGasoil">Gasoil premium ($/litro)</label>
-          <input type="number" id="cfgGasoil" value="2540" step="1">
+          <input type="number" id="cfgGasoil" value="2629" step="1">
         </div>
         <div class="field">
           <label for="cfgConsumo">Consumo liviano — solo o hasta 2 baños (L/100km, 8 km/L)</label>
@@ -389,7 +389,7 @@
       <div class="field-row">
         <div class="field">
           <label for="cfgDisgregante">Disgregante por dosis ($, 40ml)</label>
-          <input type="number" id="cfgDisgregante" value="495" step="1">
+          <input type="number" id="cfgDisgregante" value="524" step="1">
         </div>
         <div class="field">
           <label for="cfgPapel">Papel higiénico por rollo ($)</label>
@@ -660,12 +660,48 @@
 
   <div class="share-row" id="shareRow">
     <button class="share-btn wa" id="btnImagen" onclick="compartirImagen()">Compartir imagen de la cotización</button>
+    <button class="share-btn" id="btnPresupuesto" onclick="abrirPresupuesto()">Armar presupuesto para el cliente</button>
   </div>
 
   <p class="note" id="footnote"></p>
 </div>
 
+<div id="presuModal" style="display:none;position:fixed;top:0;left:0;right:0;bottom:0;z-index:90;background:rgba(20,24,22,0.7);overflow:auto;padding:16px;">
+  <div style="max-width:560px;margin:0 auto;background:var(--card,#fff);color:inherit;border-radius:14px;padding:18px;">
+    <h3 style="margin:0 0 12px;font-size:18px;">Presupuesto para el cliente</h3>
+    <p class="note" style="margin:0 0 12px;">Se arma con lo que cargaste arriba. Muestra solo los precios, sin gastos ni ganancia.</p>
+    <div class="field-row"><div class="field">
+      <label for="pEmisor">Quién emite</label>
+      <select id="pEmisor" onchange="elegirEmisor()">
+        <option value="0">Emisor 1 — CUIT 20-30573968-6</option>
+        <option value="1">Emisor 2 — CUIT 20-29417299-9</option>
+      </select>
+    </div></div>
+    <div class="field-row"><div class="field"><label for="pNombre">Nombre / razón social</label><input type="text" id="pNombre"></div></div>
+    <div class="field-row">
+      <div class="field"><label for="pCuit">CUIT</label><input type="text" id="pCuit"></div>
+      <div class="field"><label for="pTel">Teléfono</label><input type="text" id="pTel"></div>
+    </div>
+    <div class="field-row"><div class="field"><label for="pCiudad">Ciudad</label><input type="text" id="pCiudad"></div></div>
+    <p class="section-title" style="margin:14px 0 6px;">Ítems (podés cambiar descripción, cantidad y precio)</p>
+    <div id="pItems"></div>
+    <button class="share-btn" style="margin:8px 0 4px;" onclick="presuAgregarItem()">+ Agregar renglón</button>
+    <div style="display:flex;justify-content:space-between;font-weight:700;margin:10px 0 14px;"><span>Total</span><span id="pTotal">$ 0</span></div>
+    <div class="field-row"><div class="field"><label for="pCliente">Cliente (nombre o razón social)</label><input type="text" id="pCliente"></div></div>
+    <div class="field-row">
+      <div class="field"><label for="pClienteTel">Teléfono del cliente</label><input type="text" id="pClienteTel"></div>
+      <div class="field"><label for="pValidez">Validez (días)</label><input type="number" id="pValidez" value="7" min="1"></div>
+    </div>
+    <div class="field-row"><div class="field"><label for="pObs">Observaciones (opcional)</label><input type="text" id="pObs" placeholder="Ej: lugar de entrega, forma de pago"></div></div>
+    <div style="display:flex;gap:10px;margin-top:14px;">
+      <button class="share-btn wa" style="flex:1;" onclick="generarPresupuesto()">Generar imagen</button>
+      <button class="share-btn" style="flex:1;" onclick="cerrarPresupuesto()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <script>
+let ultimoIngreso = null;
 let tipo = 'obra';
 let duracion = 3; // 1, 2, o 3 (3 = "3+ semanas / mensual")
 let semanasServicio = 4; // solo relevante cuando duracion === 3
@@ -716,7 +752,7 @@ function setDesagotesEvento(n){
 }
 
 const cfgIds = ['cfgGasoil','cfgConsumo','cfgConsumoVip','cfgDesgaste','cfgVelocidad','cfgEmpleados','cfgMinDesagote','cfgMinAcomodo1','cfgMinAcomodo10','cfgDisgregante','cfgPapel','cfgMonotributos','cfgSeguros','cfgImpuestos','cfgGalpon','cfgPrecioBano','cfgVidaUtilBano','cfgPrecioCasillaVip','cfgBanosEstimados'];
-const defaults = {cfgGasoil:2540, cfgConsumo:12.5, cfgConsumoVip:20, cfgDesgaste:100, cfgVelocidad:50, cfgEmpleados:2500000, cfgMinDesagote:15, cfgMinAcomodo1:15, cfgMinAcomodo10:40, cfgDisgregante:495, cfgPapel:270.83, cfgMonotributos:523000, cfgSeguros:200000, cfgImpuestos:50000, cfgGalpon:115000, cfgPrecioBano:500000, cfgVidaUtilBano:10, cfgPrecioCasillaVip:10000000, cfgBanosEstimados:140};
+const defaults = {cfgGasoil:2629, cfgConsumo:12.5, cfgConsumoVip:20, cfgDesgaste:100, cfgVelocidad:50, cfgEmpleados:2500000, cfgMinDesagote:15, cfgMinAcomodo1:15, cfgMinAcomodo10:40, cfgDisgregante:524, cfgPapel:270.83, cfgMonotributos:523000, cfgSeguros:200000, cfgImpuestos:50000, cfgGalpon:115000, cfgPrecioBano:500000, cfgVidaUtilBano:10, cfgPrecioCasillaVip:10000000, cfgBanosEstimados:140};
 
 function loadSaved(){
   try{
@@ -927,6 +963,7 @@ function calcular(){
 
   let html = '';
   let totalPorBano = 0;
+  ultimoIngreso = null;
 
   if(tipo === 'obra'){
     const local = costoLocalDesagote(c, costoMin);
@@ -1002,6 +1039,10 @@ function calcular(){
     const ingresoAlquilerTotal = precioBano * cantidad;
     const ingresoTotalGeneral = ingresoAlquilerTotal + ingresoDesagotesTotal;
 
+    ultimoIngreso = {titulo:'Alquiler de baños químicos', items:[
+      {desc:'Alquiler de baño químico — ' + (duracion===3 ? semanas + ' semanas (mensual)' : semanas + (semanas>1?' semanas':' semana')), det:'Incluye 1 desagote por semana', cant:cantidad, unit:precioBano},
+      {desc:'Desagote extra', det:'', cant:desagotesExtraTotal, unit:precioDesagote}
+    ]};
     if(precioBano > 0 || precioDesagote > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
         <div class="ledger">
@@ -1089,6 +1130,10 @@ function calcular(){
     const ingresoPrecioTotalEv = precioBanoEv * cantidad;
     const ingresoTotalGeneralEv = ingresoPrecioTotalEv + ingresoDesagotesTotalEv;
 
+    ultimoIngreso = {titulo:'Alquiler de baños químicos para evento', items:[
+      {desc:'Alquiler de baño químico — evento', det:'', cant:cantidad, unit:precioBanoEv},
+      {desc:'Desagote durante el evento', det:'', cant:desagotesEvento*cantidad, unit:precioDesagote}
+    ]};
     if(precioBanoEv > 0 || precioDesagote > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
         <div class="ledger">
@@ -1180,6 +1225,10 @@ function calcular(){
     const desagotesExtraTotalVip = desagotesExtraVip * cantidad;
     const ingresoDesagoteExtraVip = precioDesagoteVip * desagotesExtraTotalVip;
     const ingresoVipTotal = (precioVip * cantidad) + ingresoDesagoteExtraVip;
+    ultimoIngreso = {titulo:'Alquiler de casilla VIP', items:[
+      {desc:'Alquiler de casilla VIP ' + tamanoVip + ' (' + (tamanoVip==='grande'?4:2) + ' inodoros / ' + (tamanoVip==='grande'?4:2) + ' lavamanos) — ' + semanasServicioVip + ' semanas (mensual)', det:(esQuincenalVip ? 'Incluye 1 desagote' : 'Incluye 1 desagote por semana'), cant:cantidad, unit:precioVip},
+      {desc:'Desagote y limpieza extra', det:'', cant:desagotesExtraTotalVip, unit:precioDesagoteVip}
+    ]};
     if(precioVip > 0 || precioDesagoteVip > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
         <div class="ledger">
@@ -1258,6 +1307,10 @@ function calcular(){
     const precioDesagoteVipEv = parseFloat(document.getElementById('precioDesagoteVipEvento').value) || 0;
     const ingresoDesagoteVipEv = precioDesagoteVipEv * desagotesEventoVip * cantidad;
     const ingresoVipEvTotal = (precioEventoVip * cantidad) + ingresoDesagoteVipEv;
+    ultimoIngreso = {titulo:'Alquiler de casilla VIP para evento', items:[
+      {desc:'Alquiler de casilla VIP ' + tamanoVip + ' (' + (tamanoVip==='grande'?4:2) + ' inodoros / ' + (tamanoVip==='grande'?4:2) + ' lavamanos) — evento', det:'Personal de cuidado presente ' + horasCuidado + ' hs', cant:cantidad, unit:precioEventoVip},
+      {desc:'Desagote extra durante el evento', det:'', cant:desagotesEventoVip*cantidad, unit:precioDesagoteVipEv}
+    ]};
     if(precioEventoVip > 0 || precioDesagoteVipEv > 0){
       html += `<div class="trip-block"><h3>Ingreso (lo que cobrás)</h3>
         <div class="ledger">
@@ -1549,7 +1602,232 @@ function crearImagenCotizacion(){
   return canvas;
 }
 
-function mostrarImagen(url){
+
+// ---- Presupuesto formal para el cliente (solo precios) ----
+const EMISORES = [
+  {nombre:'Sani3 Baños Portátiles', cuit:'20-30573968-6', tel:'3571682900', ciudad:'Río Tercero, Córdoba'},
+  {nombre:'Sani3 Baños Portátiles', cuit:'20-29417299-9', tel:'3571541069', ciudad:'Río Tercero, Córdoba'}
+];
+const PRESU_IDS = ['pNombre','pCuit','pTel','pCiudad','pCliente','pClienteTel','pValidez','pObs'];
+function presuGuardar(){
+  try{
+    const o = {emisor: document.getElementById('pEmisor').value};
+    PRESU_IDS.forEach(id=>{ o[id] = document.getElementById(id).value; });
+    localStorage.setItem('sani3-presu', JSON.stringify(o));
+  }catch(e){}
+}
+function elegirEmisor(){
+  const e = EMISORES[parseInt(document.getElementById('pEmisor').value)] || EMISORES[0];
+  document.getElementById('pNombre').value = e.nombre;
+  document.getElementById('pCuit').value = e.cuit;
+  document.getElementById('pTel').value = e.tel;
+  document.getElementById('pCiudad').value = e.ciudad;
+}
+function presuFila(it){
+  const fila = document.createElement('div');
+  fila.className = 'presu-fila';
+  fila.dataset.det = it.det || '';
+  fila.style.cssText = 'border:1px solid #C7CCC5;border-radius:10px;padding:10px;margin-bottom:8px;';
+  const desc = document.createElement('input');
+  desc.type = 'text'; desc.className = 'pi-desc'; desc.value = it.desc || ''; desc.style.cssText = 'width:100%;margin-bottom:8px;';
+  desc.placeholder = 'Descripción';
+  const fl = document.createElement('div');
+  fl.style.cssText = 'display:flex;gap:8px;align-items:flex-end;';
+  const mk = (cls, etiqueta, val, ancho)=>{
+    const w = document.createElement('div'); w.style.cssText = 'flex:' + ancho + ';min-width:0;';
+    const l = document.createElement('div'); l.textContent = etiqueta; l.style.cssText = 'font-size:12px;opacity:0.7;margin-bottom:2px;';
+    const i = document.createElement('input'); i.type = 'number'; i.className = cls; i.value = val; i.step = 'any'; i.style.cssText = 'width:100%;';
+    i.oninput = presuTotal;
+    w.appendChild(l); w.appendChild(i); return w;
+  };
+  fl.appendChild(mk('pi-cant', 'Cantidad', it.cant, 1));
+  fl.appendChild(mk('pi-unit', 'Precio unitario ($)', it.unit, 2));
+  const x = document.createElement('button');
+  x.textContent = 'Quitar'; x.type = 'button';
+  x.style.cssText = 'flex:none;padding:10px;border-radius:8px;border:1.5px solid #B23A2E;background:transparent;color:#B23A2E;font-weight:600;cursor:pointer;';
+  x.onclick = ()=>{ fila.remove(); presuTotal(); };
+  fl.appendChild(x);
+  fila.appendChild(desc); fila.appendChild(fl);
+  return fila;
+}
+function presuAgregarItem(){
+  document.getElementById('pItems').appendChild(presuFila({desc:'', det:'', cant:1, unit:0}));
+  presuTotal();
+}
+function presuLeerItems(){
+  const out = [];
+  document.querySelectorAll('#pItems .presu-fila').forEach(f=>{
+    const cant = parseFloat(f.querySelector('.pi-cant').value) || 0;
+    const unit = parseFloat(f.querySelector('.pi-unit').value) || 0;
+    const desc = f.querySelector('.pi-desc').value.trim();
+    if(cant > 0 && unit > 0) out.push({desc: desc || 'Servicio', det: f.dataset.det || '', cant: cant, unit: unit});
+  });
+  return out;
+}
+function presuTotal(){
+  const t = presuLeerItems().reduce((a, i)=> a + i.cant * i.unit, 0);
+  document.getElementById('pTotal').textContent = '$ ' + Math.round(t).toLocaleString('es-AR');
+}
+function abrirPresupuesto(){
+  const it = ultimoIngreso ? ultimoIngreso.items.filter(i=> i.cant > 0 && i.unit > 0) : [];
+  if(!it.length){ avisoBoton('btnPresupuesto', 'Cargá un precio primero'); return; }
+  let g = null;
+  try{ g = JSON.parse(localStorage.getItem('sani3-presu') || 'null'); }catch(e){}
+  if(g){
+    document.getElementById('pEmisor').value = g.emisor || '0';
+    PRESU_IDS.forEach(id=>{ if(g[id] !== undefined && id !== 'pCliente' && id !== 'pClienteTel' && id !== 'pObs') document.getElementById(id).value = g[id]; });
+  } else elegirEmisor();
+  const cont = document.getElementById('pItems');
+  cont.innerHTML = '';
+  it.forEach(i=> cont.appendChild(presuFila(i)));
+  presuTotal();
+  document.getElementById('presuModal').style.display = 'block';
+}
+function cerrarPresupuesto(){ document.getElementById('presuModal').style.display = 'none'; }
+
+function dibujarPresupuesto(ctx, dry, d){
+  const W = IMG_W, M = 50, CW = W - 2*M;
+  const SANS = '"IBM Plex Sans","Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  const MONO = '"IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace';
+  const C = {ink:'#1F2421', line:'#C7CCC5', soft:'#6B716C', acc:'#1B3A5C', head:'#EEF0EE'};
+  const f = (peso, px, fam) => peso + ' ' + px + 'px ' + (fam || SANS);
+  let y = 0;
+  const texto = (t, x, yy, font, color, align)=>{
+    if(dry) return;
+    ctx.font = font; ctx.fillStyle = color; ctx.textAlign = align || 'left'; ctx.textBaseline = 'alphabetic';
+    ctx.fillText(t, x, yy);
+  };
+  const linea = (yy, color, lw)=>{
+    if(dry) return;
+    ctx.beginPath(); ctx.moveTo(M, yy); ctx.lineTo(M + CW, yy);
+    ctx.strokeStyle = color; ctx.lineWidth = lw || 1; ctx.stroke();
+  };
+  const relleno = (x, yy, w, h, color)=>{ if(dry) return; ctx.fillStyle = color; ctx.fillRect(x, yy, w, h); };
+  const envolver = (t, font, maxW)=>{
+    ctx.font = font;
+    const out = []; let cur = '';
+    String(t).split(/\s+/).filter(Boolean).forEach(p=>{
+      const prueba = cur ? cur + ' ' + p : p;
+      if(ctx.measureText(prueba).width > maxW && cur){ out.push(cur); cur = p; } else cur = prueba;
+    });
+    if(cur) out.push(cur);
+    return out.length ? out : [''];
+  };
+  const money = n => '$ ' + Math.round(n).toLocaleString('es-AR');
+
+  // Encabezado: logo + datos del emisor + título
+  y = M;
+  const logo = document.querySelector('img.eyebrow');
+  const logoH = 90; let logoW = 0;
+  if(logo && logo.complete && logo.naturalWidth){ logoW = logoH * logo.naturalWidth / logo.naturalHeight; if(!dry) ctx.drawImage(logo, M, y, logoW, logoH); }
+  texto('PRESUPUESTO', M + CW, y + 34, f(700, 38), C.acc, 'right');
+  texto('Fecha: ' + d.fecha, M + CW, y + 66, f(400, 20), C.soft, 'right');
+  y += logoH + 26;
+  texto(d.nombre || '', M, y + 20, f(700, 24), C.ink); y += 32;
+  const lineasEmisor = [];
+  if(d.cuit) lineasEmisor.push('CUIT: ' + d.cuit);
+  if(d.tel) lineasEmisor.push('Teléfono: ' + d.tel);
+  if(d.ciudad) lineasEmisor.push(d.ciudad);
+  lineasEmisor.forEach(l=>{ texto(l, M, y + 18, f(400, 20), C.soft); y += 28; });
+  y += 10;
+  linea(y, C.line, 2); y += 22;
+
+  // Cliente
+  texto('PARA', M, y + 16, f(600, 16), C.soft); y += 30;
+  texto(d.cliente || '—', M, y + 20, f(700, 24), C.ink); y += 32;
+  if(d.clienteTel){ texto('Teléfono: ' + d.clienteTel, M, y + 18, f(400, 20), C.soft); y += 28; }
+  y += 14;
+
+  // Tabla
+  const xCant = M + CW - 330, xUnit = M + CW - 190, xTot = M + CW;
+  const descW = xCant - M - 50;
+  texto(d.titulo, M, y + 22, f(600, 22), C.ink); y += 40;
+  relleno(M, y, CW, 40, C.head);
+  texto('Descripción', M + 12, y + 27, f(600, 18), C.soft);
+  texto('Cant.', xCant, y + 27, f(600, 18), C.soft, 'right');
+  texto('Precio unit.', xUnit + 40, y + 27, f(600, 18), C.soft, 'right');
+  texto('Subtotal', xTot - 12, y + 27, f(600, 18), C.soft, 'right');
+  y += 40;
+  d.items.forEach(it=>{
+    const ls = envolver(it.desc, f(600, 21), descW);
+    const det = it.det ? envolver(it.det, f(400, 18), descW) : [];
+    const h = ls.length*27 + det.length*24 + 24;
+    ls.forEach((l, k)=> texto(l, M + 12, y + 32 + k*27, f(600, 21), C.ink));
+    det.forEach((l, k)=> texto(l, M + 12, y + 32 + ls.length*27 + k*24 - 2, f(400, 18), C.soft));
+    texto(String(it.cant), xCant, y + 32, f(400, 21, MONO), C.ink, 'right');
+    texto(money(it.unit), xUnit + 40, y + 32, f(400, 21, MONO), C.ink, 'right');
+    texto(money(it.cant * it.unit), xTot - 12, y + 32, f(600, 21, MONO), C.ink, 'right');
+    y += h;
+    linea(y, C.line, 1);
+  });
+
+  // Total
+  y += 14;
+  relleno(M + CW - 400, y, 400, 64, C.acc);
+  texto('TOTAL', M + CW - 384, y + 41, f(700, 22), '#FFFFFF');
+  texto(money(d.total), M + CW - 14, y + 42, f(700, 28, MONO), '#FFFFFF', 'right');
+  y += 64 + 28;
+
+  // Condiciones
+  const notas = [];
+  if(d.validez) notas.push('Presupuesto válido por ' + d.validez + ' días desde la fecha de emisión.');
+  if(d.obs) notas.push(d.obs);
+  notas.forEach(n=>{
+    envolver(n, f(400, 19), CW).forEach(l=>{ texto(l, M, y + 18, f(400, 19), C.soft); y += 27; });
+    y += 4;
+  });
+  y += 20;
+  linea(y, C.line, 1); y += 28;
+  texto('Gracias por confiar en Sani3 Baños Portátiles', W/2, y, f(400, 18), C.soft, 'center');
+  y += 40;
+  return y;
+}
+
+function crearImagenPresupuesto(d){
+  const prueba = document.createElement('canvas');
+  prueba.width = 10; prueba.height = 10;
+  const alto = Math.ceil(dibujarPresupuesto(prueba.getContext('2d'), true, d));
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.round(IMG_W * IMG_ESC);
+  canvas.height = Math.round(alto * IMG_ESC);
+  const ctx = canvas.getContext('2d');
+  ctx.scale(IMG_ESC, IMG_ESC);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, IMG_W, alto);
+  dibujarPresupuesto(ctx, false, d);
+  return canvas;
+}
+
+async function generarPresupuesto(){
+  const items = presuLeerItems();
+  if(!items.length){ avisoBoton('btnPresupuesto', 'El presupuesto no tiene ítems'); return; }
+  presuGuardar();
+  const v = id => document.getElementById(id).value.trim();
+  const d = {
+    titulo: ultimoIngreso ? ultimoIngreso.titulo : 'Detalle', items: items,
+    total: items.reduce((a, i)=> a + i.cant * i.unit, 0),
+    fecha: new Date().toLocaleDateString('es-AR'),
+    nombre: v('pNombre'), cuit: v('pCuit'), tel: v('pTel'), ciudad: v('pCiudad'),
+    cliente: v('pCliente'), clienteTel: v('pClienteTel'), validez: v('pValidez'), obs: v('pObs')
+  };
+  let canvas;
+  try{ canvas = crearImagenPresupuesto(d); }
+  catch(e){ avisoBoton('btnPresupuesto', 'No se pudo armar el presupuesto'); cerrarPresupuesto(); return; }
+  cerrarPresupuesto();
+  try{
+    const blob = await new Promise(res=> canvas.toBlob(res, 'image/png'));
+    const archivo = new File([blob], 'presupuesto-sani3.png', {type:'image/png'});
+    if(navigator.canShare && navigator.canShare({files:[archivo]})){
+      await navigator.share({files:[archivo], title:'Presupuesto Sani3'});
+      return;
+    }
+  }catch(e){
+    if(e && e.name === 'AbortError') return;
+  }
+  mostrarImagen(canvas.toDataURL('image/png'), 'presupuesto-sani3.png');
+}
+
+function mostrarImagen(url, nombreArchivo){
   const viejo = document.getElementById('visorImagen');
   if(viejo) viejo.remove();
   const v = document.createElement('div');
@@ -1565,7 +1843,7 @@ function mostrarImagen(url){
   const desc = document.createElement('a');
   desc.textContent = 'Descargar imagen';
   desc.href = url;
-  desc.download = 'cotizacion-sani3.png';
+  desc.download = nombreArchivo || 'cotizacion-sani3.png';
   desc.style.cssText = 'flex:1;text-align:center;padding:13px 10px;border-radius:8px;background:#1FA855;color:#fff;font-weight:600;font-size:15px;text-decoration:none;';
   const cerrar = document.createElement('button');
   cerrar.textContent = 'Cerrar';
